@@ -1,5 +1,6 @@
-package com.javagrunt.cli;
+package com.javagrunt.cli.command;
 
+import org.jetbrains.annotations.NotNull;
 import org.openrewrite.*;
 import org.openrewrite.config.CompositeRecipe;
 import org.openrewrite.internal.InMemoryLargeSourceSet;
@@ -17,26 +18,28 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @ShellComponent
-public class ClassCommands {
+class ClassCommands {
     @ShellMethod(value = "Rename @SpringBootApplication class to Application using OpenRewrite")
     public String renameMain() {
         try {
-            // Parse the project
             Path projectDir = Paths.get(".").toAbsolutePath().normalize();
 
-            List<Path> sourceFiles = Files.walk(projectDir.resolve("src"))
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .collect(Collectors.toList());
+            List<Path> sourceFiles;
+            try (Stream<Path> paths = Files.walk(projectDir.resolve("src"))) {
+                sourceFiles = paths
+                        .filter(path -> path.toString().endsWith(".java"))
+                        .collect(Collectors.toList());
+            }
 
             if (sourceFiles.isEmpty()) {
                 return "No Java source files found in src directory.";
             }
 
-            ExecutionContext ctx = new InMemoryExecutionContext();
+            InMemoryExecutionContext ctx = new InMemoryExecutionContext();
 
-            // Use JavaParser instead of MavenParser for simpler parsing without Maven context
             JavaParser javaParser = JavaParser.fromJavaVersion()
                     .build();
 
@@ -46,24 +49,20 @@ public class ClassCommands {
                 return "Failed to parse Java source files. Found " + sourceFiles.size() + " .java files but parsing returned no results.";
             }
 
-            // Find the class with @SpringBootApplication
             AtomicReference<String> oldClassName = new AtomicReference<>();
             AtomicReference<String> packageName = new AtomicReference<>();
 
-            // Create visitor to find the main application class
-            JavaIsoVisitor<ExecutionContext> findVisitor = new JavaIsoVisitor<ExecutionContext>() {
+            JavaIsoVisitor<@NotNull ExecutionContext> findVisitor = new JavaIsoVisitor<>() {
                 @Override
-                public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
+                public J.@NotNull ClassDeclaration visitClassDeclaration(J.@NotNull ClassDeclaration classDecl, ExecutionContext ctx) {
                     J.ClassDeclaration c = super.visitClassDeclaration(classDecl, ctx);
 
-                    // Check if class has @SpringBootApplication annotation
                     boolean hasSpringBootApp = c.getLeadingAnnotations().stream()
                             .anyMatch(ann -> ann.getSimpleName().contains("SpringBootApplication"));
 
                     if (hasSpringBootApp) {
                         oldClassName.set(c.getSimpleName());
 
-                        // Get package name
                         J.CompilationUnit cu = getCursor().firstEnclosing(J.CompilationUnit.class);
                         if (cu != null && cu.getPackageDeclaration() != null) {
                             packageName.set(cu.getPackageDeclaration().getExpression().toString());
@@ -74,7 +73,6 @@ public class ClassCommands {
                 }
             };
 
-            // Visit all sources to find the main class
             for (SourceFile source : sources) {
                 if (source instanceof J.CompilationUnit) {
                     findVisitor.visit(source, ctx);
@@ -89,27 +87,27 @@ public class ClassCommands {
                 return "Main class is already named Application.";
             }
 
-            // Create custom recipe to rename the class declaration
             String oldFqn = packageName.get() + "." + oldClassName.get();
             String newFqn = packageName.get() + ".Application";
             String oldClassSimpleName = oldClassName.get();
+            String oldTestClassSimpleName = oldClassName.get() + "Tests";
 
             Recipe renameClassDeclaration = new Recipe() {
                 @Override
-                public String getDisplayName() {
-                    return "Rename class declaration";
+                public @NotNull String getDisplayName() {
+                    return "Rename main class declaration";
                 }
 
                 @Override
-                public String getDescription() {
+                public @NotNull String getDescription() {
                     return "Renames the class declaration from " + oldClassSimpleName + " to Application";
                 }
 
                 @Override
-                public TreeVisitor<?, ExecutionContext> getVisitor() {
-                    return new JavaIsoVisitor<ExecutionContext>() {
+                public @NotNull TreeVisitor<?, @NotNull ExecutionContext> getVisitor() {
+                    return new JavaIsoVisitor<>() {
                         @Override
-                        public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext ctx) {
+                        public J.@NotNull ClassDeclaration visitClassDeclaration(J.@NotNull ClassDeclaration classDecl, ExecutionContext ctx) {
                             J.ClassDeclaration c = super.visitClassDeclaration(classDecl, ctx);
                             if (c.getSimpleName().equals(oldClassSimpleName)) {
                                 return c.withName(c.getName().withSimpleName("Application"));
@@ -120,10 +118,37 @@ public class ClassCommands {
                 }
             };
 
+            Recipe renameTestClassDeclaration = new Recipe() {
+                @Override
+                public @NotNull String getDisplayName() {
+                    return "Rename test class declaration";
+                }
+
+                @Override
+                public @NotNull String getDescription() {
+                    return "Renames the test class declaration from " + oldTestClassSimpleName + " to ApplicationTests";
+                }
+
+                @Override
+                public @NotNull TreeVisitor<?, @NotNull ExecutionContext> getVisitor() {
+                    return new JavaIsoVisitor<>() {
+                        @Override
+                        public J.@NotNull ClassDeclaration visitClassDeclaration(J.@NotNull ClassDeclaration classDecl, ExecutionContext ctx) {
+                            J.ClassDeclaration c = super.visitClassDeclaration(classDecl, ctx);
+                            if (c.getSimpleName().equals(oldTestClassSimpleName)) {
+                                return c.withName(c.getName().withSimpleName("ApplicationTests"));
+                            }
+                            return c;
+                        }
+                    };
+                }
+            };
+
             Recipe renameRecipe = new CompositeRecipe(Arrays.asList(
-                    renameClassDeclaration,  // First rename the class declaration
-                    new ChangeType(oldFqn, newFqn, true),  // Then update all type references
-                    new ChangeType(oldFqn + "Tests", packageName.get() + ".ApplicationTests", true)  // Also rename test class if it exists
+                    renameClassDeclaration,  // Rename the main class declaration
+                    renameTestClassDeclaration,  // Rename the test class declaration
+                    new ChangeType(oldFqn, newFqn, true),  // Update all type references for main class
+                    new ChangeType(oldFqn + "Tests", packageName.get() + ".ApplicationTests", true)  // Update all type references for test class
             ));
 
             // Apply the recipe
@@ -138,7 +163,7 @@ public class ClassCommands {
 
                     // Update source path to match the new class name
                     String oldFilePath = after.getSourcePath().toString();
-                    String newFilePath = oldFilePath.replace(oldClassSimpleName + ".java", "Application.java");
+                    String newFilePath = getString(oldFilePath, oldClassSimpleName, oldTestClassSimpleName);
 
                     // If file name changed, update the source path
                     Path newPath;
@@ -160,10 +185,25 @@ public class ClassCommands {
                 }
             }
 
-            return String.format("Successfully renamed %s to Application.", oldClassName.get());
+            return String.format("Successfully renamed %s to Application and %sTests to ApplicationTests.",
+                    oldClassName.get(), oldClassName.get());
 
         } catch (Exception e) {
             return "Error during rename operation: " + e.getMessage();
         }
+    }
+
+    private static @NotNull String getString(String oldFilePath, String oldClassSimpleName, String oldTestClassSimpleName) {
+        String newFilePath = oldFilePath;
+
+        // Handle main class file rename
+        if (oldFilePath.contains(oldClassSimpleName + ".java")) {
+            newFilePath = oldFilePath.replace(oldClassSimpleName + ".java", "Application.java");
+        }
+        // Handle test class file rename
+        else if (oldFilePath.contains(oldTestClassSimpleName + ".java")) {
+            newFilePath = oldFilePath.replace(oldTestClassSimpleName + ".java", "ApplicationTests.java");
+        }
+        return newFilePath;
     }
 }

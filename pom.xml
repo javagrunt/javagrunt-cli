@@ -42,22 +42,10 @@
             <version>8.67.0</version>
         </dependency>
         <dependency>
-            <groupId>org.openrewrite</groupId>
-            <artifactId>rewrite-maven</artifactId>
-            <version>8.66.4</version>
-        </dependency>
-        <dependency>
             <groupId>org.openrewrite.recipe</groupId>
             <artifactId>rewrite-spring</artifactId>
             <version>6.18.0</version>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.openrewrite</groupId>-->
-<!--            <artifactId>rewrite-java-17</artifactId>-->
-<!--            <version>8.66.4</version>-->
-<!--            <scope>runtime</scope>-->
-<!--        </dependency>-->
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
