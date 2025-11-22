@@ -32,11 +32,13 @@ class MavenCommandsTests {
         Path testXml = testFilesDir.resolve("test-with-empty.xml");
         Path testTxt = testFilesDir.resolve("test-file.txt");
         Path pomTest = testFilesDir.resolve("pom-test.xml");
+        Path pomVersion = testFilesDir.resolve("pom-version-test.xml");
 
         Files.deleteIfExists(cleanXml);
         Files.deleteIfExists(testXml);
         Files.deleteIfExists(testTxt);
         Files.deleteIfExists(pomTest);
+        Files.deleteIfExists(pomVersion);
     }
 
     @Test
@@ -154,5 +156,127 @@ class MavenCommandsTests {
         assertFalse(fileContent.contains("<url/>"));
         assertFalse(fileContent.contains("<license/>"));
         assertTrue(fileContent.contains("<modelVersion>4.0.0</modelVersion>"));
+    }
+
+    @Test
+    void testProjectVersionWithValidPom() throws IOException {
+        // Create a valid pom.xml
+        String pomContent = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.example</groupId>
+                    <artifactId>test-project</artifactId>
+                    <version>1.0.0</version>
+                    <name>Test Project</name>
+                </project>
+                """;
+
+        Path pomPath = testFilesDir.resolve("pom-version-test.xml");
+        Files.writeString(pomPath, pomContent);
+
+        // Temporarily rename actual pom.xml if it exists
+        Path actualPom = testFilesDir.resolve("pom.xml");
+        Path backupPom = testFilesDir.resolve("pom.xml.backup");
+        boolean hadActualPom = Files.exists(actualPom);
+        if (hadActualPom) {
+            Files.move(actualPom, backupPom);
+        }
+
+        try {
+            // Copy test pom to pom.xml location
+            Files.copy(pomPath, actualPom);
+
+            // Execute the command
+            String result = mavenCommands.projectVersion("2.0.0");
+
+            // Verify the result
+            assertEquals("Successfully changed project version to 2.0.0", result);
+
+            // Verify version was changed
+            String fileContent = Files.readString(actualPom);
+            assertTrue(fileContent.contains("<version>2.0.0</version>"));
+            assertFalse(fileContent.contains("<version>1.0.0</version>"));
+        } finally {
+            // Clean up and restore original pom.xml
+            Files.deleteIfExists(actualPom);
+            if (hadActualPom) {
+                Files.move(backupPom, actualPom);
+            }
+        }
+    }
+
+    @Test
+    void testProjectVersionWithDefaultValue() throws IOException {
+        // Create a valid pom.xml
+        String pomContent = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.example</groupId>
+                    <artifactId>test-project</artifactId>
+                    <version>1.0.0</version>
+                </project>
+                """;
+
+        Path actualPom = testFilesDir.resolve("pom.xml");
+        Path backupPom = testFilesDir.resolve("pom.xml.backup");
+        boolean hadActualPom = Files.exists(actualPom);
+        if (hadActualPom) {
+            Files.move(actualPom, backupPom);
+        }
+
+        try {
+            Files.writeString(actualPom, pomContent);
+
+            // Execute the command with default value
+            String result = mavenCommands.projectVersion("0");
+
+            // Verify the result
+            assertEquals("Successfully changed project version to 0", result);
+
+            // Verify version was changed to default value
+            String fileContent = Files.readString(actualPom);
+            assertTrue(fileContent.contains("<version>0</version>"));
+        } finally {
+            Files.deleteIfExists(actualPom);
+            if (hadActualPom) {
+                Files.move(backupPom, actualPom);
+            }
+        }
+    }
+
+    @Test
+    void testProjectVersionWithNonExistentPom() {
+        // Temporarily rename pom.xml if it exists to simulate non-existent
+        Path actualPom = testFilesDir.resolve("pom.xml");
+        Path backupPom = testFilesDir.resolve("pom.xml.backup");
+        boolean hadActualPom = false;
+
+        try {
+            if (Files.exists(actualPom)) {
+                hadActualPom = true;
+                Files.move(actualPom, backupPom);
+            }
+
+            // Execute the command
+            String result = mavenCommands.projectVersion("1.0.0");
+
+            // Verify the result
+            assertEquals("File not found: pom.xml", result);
+        } catch (IOException e) {
+            fail("Test setup failed: " + e.getMessage());
+        } finally {
+            try {
+                if (hadActualPom) {
+                    Files.move(backupPom, actualPom);
+                }
+            } catch (IOException e) {
+                // Ignore cleanup errors
+            }
+        }
     }
 }

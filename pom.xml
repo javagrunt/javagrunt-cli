@@ -9,7 +9,7 @@
 	</parent>
 	<groupId>com.javagrunt</groupId>
 	<artifactId>cli</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0</version>
 	<name>cli</name>
 	<description>Demo project for Spring Boot</description>
 	<properties>
@@ -31,6 +31,11 @@
             <groupId>org.openrewrite.recipe</groupId>
             <artifactId>rewrite-spring</artifactId>
             <version>6.18.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openrewrite</groupId>
+            <artifactId>rewrite-maven</artifactId>
+            <version>8.66.4</version>
         </dependency>
         <dependency>
             <groupId>org.openrewrite</groupId>
