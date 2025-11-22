@@ -5,27 +5,13 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.0.0</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<version>4.0.0</version> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.javagrunt</groupId>
 	<artifactId>cli</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>cli</name>
 	<description>Demo project for Spring Boot</description>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
 	<properties>
 		<java.version>25</java.version>
 		<spring-shell.version>4.0.0-M1</spring-shell.version>
@@ -45,6 +31,11 @@
             <groupId>org.openrewrite.recipe</groupId>
             <artifactId>rewrite-spring</artifactId>
             <version>6.18.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openrewrite</groupId>
+            <artifactId>rewrite-xml</artifactId>
+            <version>8.67.0</version>
         </dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
