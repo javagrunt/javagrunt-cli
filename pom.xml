@@ -68,11 +68,45 @@
 
 	<build>
 		<plugins>
+            <plugin>
+                <groupId>org.graalvm.buildtools</groupId>
+                <artifactId>native-maven-plugin</artifactId>
+            </plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<profile>
+			<id>native</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.buildtools</groupId>
+						<artifactId>native-maven-plugin</artifactId>
+						<configuration>
+							<metadataRepository>
+								<enabled>true</enabled>
+							</metadataRepository>
+							<buildArgs>
+								<arg>--initialize-at-run-time=org.openrewrite.internal.EncodingDetectingInputStream</arg>
+								<arg>--initialize-at-run-time=org.openrewrite.xml.XmlParser</arg>
+								<arg>--initialize-at-run-time=org.openrewrite.maven.MavenParser</arg>
+								<arg>--initialize-at-run-time=org.openrewrite.java.JavaParser</arg>
+								<arg>--initialize-at-run-time=org.openrewrite.Parser</arg>
+								<arg>-H:+ReportExceptionStackTraces</arg>
+								<arg>-H:+AddAllCharsets</arg>
+								<arg>--enable-url-protocols=http,https</arg>
+								<arg>--enable-all-security-services</arg>
+							</buildArgs>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>

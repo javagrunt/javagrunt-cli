@@ -19,7 +19,7 @@ class MavenCommandsTests {
     private Path testFilesDir;
 
     @BeforeEach
-    void setUp() throws IOException {
+    void setUp() {
         mavenCommands = new MavenCommands();
         // Create test files in current directory
         testFilesDir = Paths.get(".").toAbsolutePath().normalize();

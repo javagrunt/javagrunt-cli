@@ -1,0 +1,19 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "\\Qorg/openrewrite\\E.*"
+      },
+      {
+        "pattern": "\\Qmozilla/public-suffix-list.txt\\E"
+      },
+      {
+        "pattern": "\\QMETA-INF/rewrite/\\E.*"
+      },
+      {
+        "pattern": "\\Qchardet\\E.*"
+      }
+    ]
+  },
+  "bundles": []
+}
